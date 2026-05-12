@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+:root {
+  --page-bg: #030712;
+  --surface-bg: #111827;
+  --surface-hover: #1f2937;
+  --card-bg: #1f2937;
+  --card-hover: #374151;
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #d1d5db;
+  --border: #1f2937;
+  --border-hover: #374151;
+  --backdrop: rgba(0, 0, 0, 0.5);
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(1rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 0.2s ease-out;
+}
+
+[data-theme="light"] {
+  --page-bg: #f3f4f6;
+  --surface-bg: #ffffff;
+  --surface-hover: #f9fafb;
+  --card-bg: #ffffff;
+  --card-hover: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-tertiary: #374151;
+  --border: #e5e7eb;
+  --border-hover: #d1d5db;
+  --backdrop: rgba(0, 0, 0, 0.1);
+}
