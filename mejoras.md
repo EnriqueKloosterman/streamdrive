@@ -1,7 +1,7 @@
 # Posibles Mejoras — StreamDrive Hub
 
 ## Testing y Calidad
-- [ ] Configurar tests unitarios e integración (Vitest frontend, Jest/Mocha backend)
+- [x] Configurar tests unitarios e integración (Mocha + Chai + Supertest backend)
 - [ ] Agregar linting (ESLint + Prettier) en backend y frontend
 - [ ] Agregar typecheck (TypeScript o JSDoc) — actualmente todo JS sin tipos
 - [ ] Pipeline CI/CD (GitHub Actions: test, build, deploy)

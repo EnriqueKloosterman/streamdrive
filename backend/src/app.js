@@ -40,8 +40,18 @@ app.use('/api/*', (req, res) => {
 
 app.use(errorHandler);
 
-initDatabase().then(() => {
-  app.listen(PORT, () => {
-    console.log(`StreamDrive API running on http://localhost:${PORT}`);
+async function startServer() {
+  await initDatabase();
+  return new Promise((resolve) => {
+    const server = app.listen(PORT, () => {
+      console.log(`StreamDrive API running on http://localhost:${PORT}`);
+      resolve(server);
+    });
   });
-});
+}
+
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = { app, startServer, initDatabase };

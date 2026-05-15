@@ -5,7 +5,8 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "node --watch src/app.js"
+    "dev": "node --watch src/app.js",
+    "test": "cross-env NODE_ENV=test mocha 'tests/**/*.test.js' --timeout 10000"
   },
   "dependencies": {
     "connect-sqlite3": "^0.9.16",
@@ -24,5 +25,12 @@
     "sequelize": "^6.37.3",
     "sqlite3": "^5.1.7",
     "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "chai": "^6.2.2",
+    "cross-env": "^10.1.0",
+    "mocha": "^11.7.5",
+    "sinon": "^22.0.0",
+    "supertest": "^7.2.2"
   }
 }
