@@ -83,13 +83,32 @@ async function syncCourse(drive, folder) {
   });
   const course = await Course.findOne({ where: { drive_folder_id: folder.id } });
 
-  const videoFiles = files.filter(f =>
-    /\.(mp4|mkv|webm|mov)$/i.test(f.name)
-  ).sort((a, b) => a.name.localeCompare(b.name));
+  const QUALITY_RE = /-(1080p|720p|480p|360p|240p|144p)\.(mp4|mkv|webm|mov)$/i;
+  const VIDEO_EXT_RE = /\.(mp4|mkv|webm|mov)$/i;
 
-  for (let i = 0; i < videoFiles.length; i++) {
-    const video = videoFiles[i];
-    const baseName = video.name.replace(/\.(mp4|mkv|webm|mov)$/i, '');
+  const videoFiles = files.filter(f => VIDEO_EXT_RE.test(f.name)).sort((a, b) => a.name.localeCompare(b.name));
+
+  const groups = {};
+  for (const vf of videoFiles) {
+    const qMatch = vf.name.match(QUALITY_RE);
+    const baseName = qMatch ? vf.name.slice(0, qMatch.index) : vf.name.replace(VIDEO_EXT_RE, '');
+    const quality = qMatch ? qMatch[1].toLowerCase() : null;
+    if (!groups[baseName]) groups[baseName] = { main: null, qualities: [] };
+    if (quality) {
+      groups[baseName].qualities.push({ label: quality, drive_file_id: vf.id });
+    } else {
+      groups[baseName].main = vf;
+    }
+  }
+
+  let order = 0;
+  for (const baseName of Object.keys(groups).sort()) {
+    const group = groups[baseName];
+    const video = group.main || group.qualities[0];
+
+    if (!video) continue;
+    order++;
+
     const mdFile = files.find(f =>
       f.name === `${baseName}.md` || f.name === `${baseName}.markdown`
     );
@@ -130,14 +149,19 @@ async function syncCourse(drive, folder) {
       uniqueSubs.push({ driveFileId: sf.id, language: lang, label, format: ext.toLowerCase() });
     }
 
+    const qualitiesJson = group.qualities.length > 0
+      ? JSON.stringify([{ label: 'Original', drive_file_id: video.id }, ...group.qualities])
+      : null;
+
     await Lesson.upsert({
       course_id: course.id,
       drive_file_id: video.id,
       title: video.name,
-      order: i + 1,
+      order,
       summary,
       section: video.section || null,
       subtitles: uniqueSubs.length > 0 ? JSON.stringify(uniqueSubs) : null,
+      qualities: qualitiesJson,
     });
   }
 

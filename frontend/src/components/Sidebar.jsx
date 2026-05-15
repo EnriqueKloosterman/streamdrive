@@ -110,6 +110,13 @@ export default function Sidebar({ lessons, currentLessonId, onSelectLesson, prog
                     }`}
                     style={currentLessonId !== lesson.id ? { color: 'var(--text-secondary)' } : undefined}
                   >
+                    {lesson.thumbnail_url && (
+                      <img
+                        src={lesson.thumbnail_url}
+                        alt=""
+                        className="w-10 h-7 rounded object-cover mr-2 shrink-0"
+                      />
+                    )}
                     <span className="text-xs mr-2" style={{ color: 'var(--text-secondary)' }}>{lesson.order}.</span>
                     <span className="flex-1 truncate">{lesson.title}</span>
                     {progress[lesson.id]?.completed ? (

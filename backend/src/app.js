@@ -10,6 +10,7 @@ const { configureSession } = require('./config/session');
 const { publicLimiter } = require('./config/limiter');
 const { errorHandler } = require('./middleware/errorHandler');
 const { initDatabase } = require('./routes');
+const path = require('path');
 const authRoutes = require('./routes/authRoutes');
 const apiRoutes = require('./routes/apiRoutes');
 
@@ -27,6 +28,8 @@ app.use(publicLimiter);
 app.use(configureSession());
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.use('/thumbnails', express.static(path.resolve(__dirname, '../thumbnails')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api', apiRoutes);

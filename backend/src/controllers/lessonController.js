@@ -20,6 +20,8 @@ async function getLesson(req, res, next) {
       summary: lesson.summary,
       order: lesson.order,
       duration: lesson.duration,
+      thumbnail_url: lesson.thumbnail_url,
+      qualities: lesson.qualities ? JSON.parse(lesson.qualities) : null,
     });
   } catch (error) {
     next(error);
@@ -67,8 +69,19 @@ async function streamVideo(req, res, next) {
       });
     }
 
+    let fileId = lesson.drive_file_id;
+    const quality = req.query.quality;
+    if (quality && lesson.qualities) {
+      try {
+        const qualities = JSON.parse(lesson.qualities);
+        const found = qualities.find(q => q.label.toLowerCase() === quality.toLowerCase());
+        if (found) fileId = found.drive_file_id;
+      } catch (e) {
+        // ignore invalid qualities JSON
+      }
+    }
+
     const drive = getDriveClient();
-    const fileId = lesson.drive_file_id;
 
     const meta = await drive.files.get({
       fileId,
@@ -210,4 +223,49 @@ function srtToVtt(srt) {
       .replace(/(\d+):(\d+\.\d+)/g, '00:$1:$2');
 }
 
-module.exports = { getLesson, updateLesson, streamVideo, getSubtitle };
+async function saveThumbnail(req, res, next) {
+  try {
+    const lesson = await Lesson.findByPk(req.params.id);
+    if (!lesson) {
+      return res.status(404).json({
+        error: { code: 'LESSON_NOT_FOUND', message: 'Lesson not found.' },
+      });
+    }
+
+    const { dataUrl } = req.body;
+    if (!dataUrl || typeof dataUrl !== 'string') {
+      return res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'dataUrl is required.' },
+      });
+    }
+
+    const matches = dataUrl.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
+    if (!matches) {
+      return res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Invalid data URL format.' },
+      });
+    }
+
+    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const base64Data = matches[2];
+    const filename = `${lesson.id}.${ext}`;
+    const fs = require('fs');
+    const path = require('path');
+    const thumbnailsDir = path.resolve(__dirname, '../../thumbnails');
+
+    if (!fs.existsSync(thumbnailsDir)) {
+      fs.mkdirSync(thumbnailsDir, { recursive: true });
+    }
+
+    fs.writeFileSync(path.join(thumbnailsDir, filename), base64Data, 'base64');
+
+    lesson.thumbnail_url = `/thumbnails/${filename}`;
+    await lesson.save();
+
+    res.json({ thumbnail_url: lesson.thumbnail_url });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { getLesson, updateLesson, streamVideo, getSubtitle, saveThumbnail };

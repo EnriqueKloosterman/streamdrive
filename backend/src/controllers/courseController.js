@@ -71,7 +71,9 @@ async function getCourse(req, res, next) {
         section: l.section,
         chapters: l.chapters ? JSON.parse(l.chapters) : [],
         subtitles: l.subtitles ? JSON.parse(l.subtitles) : [],
+        thumbnail_url: l.thumbnail_url,
         drive_file_id: l.drive_file_id,
+        qualities: l.qualities ? JSON.parse(l.qualities) : null,
       })),
     });
   } catch (error) {

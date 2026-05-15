@@ -49,6 +49,14 @@ const Lesson = sequelize.define('Lesson', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  thumbnail_url: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  qualities: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
 }, {
   tableName: 'lessons',
 });

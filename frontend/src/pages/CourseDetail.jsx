@@ -79,6 +79,15 @@ export default function CourseDetail() {
     api.post('/api/progress/complete', { lessonId: selectedLesson.id }).catch(() => {})
   }, [selectedLesson])
 
+  const handleThumbnailCaptured = useCallback(() => {
+    if (!selectedLesson) return
+    setLocalLessons(prev =>
+      (prev || course?.lessons || []).map(l =>
+        l.id === selectedLesson.id ? { ...l, thumbnail_url: `/thumbnails/${selectedLesson.id}.jpg` } : l
+      )
+    )
+  }, [selectedLesson, course])
+
   const handleSaveSummary = async () => {
     if (!selectedLesson) return
     try {
@@ -263,6 +272,9 @@ export default function CourseDetail() {
                       initialTime={initialTime}
                       onProgress={handleProgress}
                       onComplete={handleAutoComplete}
+                      thumbnailUrl={selectedLesson.thumbnail_url}
+                      onThumbnailCaptured={handleThumbnailCaptured}
+                      qualities={selectedLesson.qualities}
                     />
                   </div>
                 )}

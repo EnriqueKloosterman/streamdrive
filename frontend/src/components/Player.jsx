@@ -1,8 +1,13 @@
 import { useRef, useState, useEffect } from 'react'
 import { BookmarkPlus, Trash2, Subtitles, ChevronDown, ChevronRight } from 'lucide-react'
 
-export default function Player({ lessonId, src, chapters = [], subtitles = [], onChaptersChange, initialTime = 0, onProgress, onComplete }) {
+export default function Player({ lessonId, src, chapters = [], subtitles = [], onChaptersChange, initialTime = 0, onProgress, onComplete, thumbnailUrl, onThumbnailCaptured, qualities }) {
+  const [currentQuality, setCurrentQuality] = useState(qualities?.[0]?.label || 'Original')
+  const pendingSeekRef = useRef(null)
+  const qualitySrc = qualities ? `/api/lessons/${lessonId}/stream?quality=${currentQuality}` : src
   const videoRef = useRef(null)
+  const canvasRef = useRef(null)
+  const thumbnailCapturedRef = useRef(false)
   const lastSaveRef = useRef(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [editing, setEditing] = useState(false)
@@ -16,11 +21,11 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
 
   useEffect(() => {
     const el = videoRef.current
-    if (!el || !src) return
+    if (!el || !qualitySrc) return
     isLoadedRef.current = false
     setVideoLoading(true)
     setVideoError(null)
-    el.src = src
+    el.src = qualitySrc
     el.load()
     lastSaveRef.current = Date.now()
     setCurrentTime(0)
@@ -28,7 +33,9 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
     const onMeta = () => {
       isLoadedRef.current = true
       setVideoLoading(false)
-      if (initialTime > 0) el.currentTime = initialTime
+      const seekTime = pendingSeekRef.current !== null ? pendingSeekRef.current : initialTime
+      if (seekTime > 0) el.currentTime = seekTime
+      pendingSeekRef.current = null
       el.removeEventListener('loadedmetadata', onMeta)
     }
     const onError = () => {
@@ -41,11 +48,11 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
       el.removeEventListener('loadedmetadata', onMeta)
       el.removeEventListener('error', onError)
     }
-  }, [src, lessonId])
+  }, [qualitySrc, lessonId])
 
   useEffect(() => {
     const el = videoRef.current
-    if (!el || !src || !isLoadedRef.current || initialTime <= 0) return
+    if (!el || !qualitySrc || !isLoadedRef.current || initialTime <= 0) return
     el.currentTime = initialTime
   }, [initialTime])
 
@@ -58,6 +65,22 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
       if (onProgress && t - lastSaveRef.current >= 15) {
         onProgress(Math.floor(t))
         lastSaveRef.current = t
+      }
+      if (!thumbnailCapturedRef.current && !thumbnailUrl && t >= 5 && canvasRef.current) {
+        thumbnailCapturedRef.current = true
+        const canvas = canvasRef.current
+        const ctx = canvas.getContext('2d')
+        canvas.width = 320
+        canvas.height = 180
+        ctx.drawImage(el, 0, 0, 320, 180)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
+        fetch(`/api/lessons/${lessonId}/thumbnail`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataUrl }),
+        }).then(res => {
+          if (res.ok && onThumbnailCaptured) onThumbnailCaptured()
+        }).catch(() => { thumbnailCapturedRef.current = false })
       }
     }
     el.addEventListener('timeupdate', handler)
@@ -79,7 +102,7 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
       const t = Math.floor(el.currentTime)
       if (onProgress && t > 0) onProgress(t)
     }
-  }, [src, onProgress, onComplete])
+  }, [qualitySrc, onProgress, onComplete])
 
   const seekTo = (time) => {
     const el = videoRef.current
@@ -135,6 +158,58 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
     return `${m}:${sec.toString().padStart(2, '0')}`
   }
 
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return
+
+      switch (e.key) {
+        case 'f':
+        case 'F':
+          e.preventDefault()
+          if (document.fullscreenElement) {
+            document.exitFullscreen()
+          } else {
+            el.requestFullscreen()
+          }
+          break
+        case 'm':
+        case 'M':
+          e.preventDefault()
+          el.muted = !el.muted
+          break
+        case 'c':
+        case 'C':
+          e.preventDefault()
+          for (let i = 0; i < el.textTracks.length; i++) {
+            const track = el.textTracks[i]
+            track.mode = track.mode === 'showing' ? 'hidden' : 'showing'
+          }
+          break
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    const handleSpace = (e) => {
+      if (e.key === ' ') {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        if (el.paused) el.play()
+        else el.pause()
+      }
+    }
+    document.addEventListener('keydown', handleSpace, { capture: true })
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keydown', handleSpace, { capture: true })
+    }
+  }, [])
+
   const [transcriptOpen, setTranscriptOpen] = useState(false)
   const [transcriptText, setTranscriptText] = useState('')
   const [transcriptLoading, setTranscriptLoading] = useState(false)
@@ -167,6 +242,7 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
 
   return (
     <div>
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
       <div className="rounded-xl overflow-hidden bg-black relative">
         {videoLoading && (
           <div className="absolute inset-0 flex items-center justify-center z-10" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
@@ -200,6 +276,7 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
           controls
           className="w-full aspect-video"
           preload="auto"
+          poster={thumbnailUrl || undefined}
         >
           {subtitles.map((sub, i) => (
             <track
@@ -213,6 +290,29 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
           <p>Your browser does not support the video element.</p>
         </video>
       </div>
+
+      {qualities && qualities.length > 1 && (
+        <div className="flex items-center gap-2 mt-3">
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Quality:</span>
+          <div className="relative inline-block">
+            <select
+              value={currentQuality}
+              onChange={(e) => {
+                const el = videoRef.current
+                if (el) pendingSeekRef.current = el.currentTime
+                setCurrentQuality(e.target.value)
+              }}
+              className="appearance-none px-3 py-1.5 pr-8 rounded-lg text-xs cursor-pointer transition-colors"
+              style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            >
+              {qualities.map((q) => (
+                <option key={q.label} value={q.label}>{q.label}</option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-secondary)' }} />
+          </div>
+        </div>
+      )}
 
       {subtitles.length > 0 && (
         <div className="mt-3">

@@ -37,6 +37,10 @@ router.put('/lessons/:id', [
 ], lessonController.updateLesson);
 router.get('/lessons/:id/stream', lessonController.streamVideo);
 router.get('/lessons/:id/subtitles/:index', lessonController.getSubtitle);
+router.post('/lessons/:id/thumbnail', [
+  body('dataUrl').isString(),
+  validate,
+], lessonController.saveThumbnail);
 
 router.get('/search', searchController.search);
 

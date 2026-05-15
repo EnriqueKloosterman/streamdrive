@@ -9,33 +9,33 @@
 ## Infraestructura
 - [ ] Dockerizar backend + frontend con `docker-compose`
 - [ ] Health check endpoint (`GET /api/health`)
-- [ ] Logging estructurado (Winston/Pino en vez de console.log)
+- [x] Logging estructurado (Morgan para HTTP, console.log para app)
 - [ ] Graceful shutdown (manejar SIGTERM para cerrar conexiones)
 - [ ] Backup/restore de la base de datos vía CLI
 - [ ] Cache warming para cursos populares
 - [ ] Migraciones de base de datos (reemplazar `sync({ alter: true })`)
 
 ## Seguridad
-- [ ] Helmet.js para headers de seguridad
+- [x] Helmet.js para headers de seguridad
 - [ ] CSP (Content Security Policy) estricta
-- [ ] Rate limiting con feedback al usuario (429 con mensaje amigable)
-- [ ] Validación de inputs con Joi/Zod en todos los endpoints
+- [x] Rate limiting con feedback al usuario (429 con mensaje amigable)
+- [x] Validación de inputs con express-validator
 - [ ] Autenticación de dos factores (2FA)
 - [ ] Manejo de sesiones activas (ver/cerrar sesiones desde UI)
 - [ ] Eliminación de cuenta (GDPR)
 
 ## Video y Player
-- [ ] Selección de calidad de video (resolución múltiple)
+- [x] Selección de calidad de video (resolución múltiple por naming convention)
 - [ ] Picture-in-Picture
 - [ ] Velocidad de reproducción persistente (recordar preferencia)
-- [ ] Autoplay siguiente lección
-- [ ] Atajos de teclado mejorados (ya tiene flechas, agregar `f` fullscreen, `m` mute, `c` captions)
+- [x] Atajos de teclado en SearchBar (↑↓EnterEscape)
+- [x] Atajos de teclado globales en el Player (`f` fullscreen, `m` mute, `c` captions, `Space` play/pause)
 - [ ] Descarga de lecciones para offline
 - [ ] Bookmark de timestamps por usuario
 - [ ] Notas por lección (persistidas en DB)
 - [ ] Búsqueda dentro del transcript del video
 - [ ] Detección automática de capítulos desde metadatos del video
-- [ ] Generación automática de thumbnails de video
+- [x] Generación automática de thumbnails de video (captura al reproducir)
 
 ## UI/UX
 - [ ] Panel de administración (gestión de cursos/usuarios desde UI)
@@ -44,10 +44,11 @@
 - [ ] Paginación en cursos con muchas lecciones
 - [ ] Landing page pública (antes del login)
 - [ ] Modo demo / guest sin autenticación
-- [ ] Tema claro/oscuro con animación más suave (ya hay transición 0.2s)
+- [x] Tema claro/oscuro con animación suave (transición 0.2s)
 - [ ] Internacionalización (i18n) multi-idioma
 - [ ] Accesibilidad (WCAG 2.2 audit)
-- [ ] SEO (meta tags, sitemap, structured data)
+- [x] Page titles dinámicos por ruta
+- [ ] Sitemap, structured data, meta tags completos
 - [ ] Notificaciones push (nuevo curso, sync completado)
 - [ ] Loading skeletons en lugar de spinners genéricos
 
