@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useI18n } from '../contexts/I18nContext'
 import { BookOpen } from 'lucide-react'
 
 export default function Login() {
   const { user } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [isRedirecting, setIsRedirecting] = useState(false)
 
@@ -12,7 +14,7 @@ export default function Login() {
     if (user) navigate('/dashboard', { replace: true })
   }, [user, navigate])
 
-  useEffect(() => { document.title = 'Login - StreamDrive Hub' }, [])
+  useEffect(() => { document.title = t('login.title') }, [t])
 
   const handleLogin = () => {
     setIsRedirecting(true)
@@ -24,8 +26,8 @@ export default function Login() {
       <div className="text-center">
         <div className="mb-8">
           <BookOpen size={48} className="text-indigo-400 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>StreamDrive Hub</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Your self-hosted learning platform</p>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{t('login.heading')}</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>{t('login.subtitle')}</p>
         </div>
         <button
           onClick={handleLogin}
@@ -42,7 +44,7 @@ export default function Login() {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
           )}
-          {isRedirecting ? 'Redirecting...' : 'Sign in with Google'}
+          {isRedirecting ? t('login.redirecting') : t('login.signIn')}
         </button>
       </div>
     </div>

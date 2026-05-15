@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Home, BookOpen, CheckCircle, ChevronDown, ChevronRight, X, BarChart3 } from 'lucide-react'
+import { useI18n } from '../contexts/I18nContext'
 
 function fmt(s) {
   if (!s || s < 60) return s ? `${s}s` : ''
@@ -10,6 +11,7 @@ function fmt(s) {
 }
 
 export default function Sidebar({ lessons, currentLessonId, onSelectLesson, progress = {}, onClose }) {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
   const isDashboard = location.pathname === '/dashboard'
@@ -35,14 +37,14 @@ export default function Sidebar({ lessons, currentLessonId, onSelectLesson, prog
       <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
         <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
           <BookOpen size={20} className="text-indigo-400" />
-          StreamDrive
+          {t('sidebar.brand')}
         </h2>
         {onClose && (
           <button
             onClick={onClose}
             className="lg:hidden transition-colors"
             style={{ color: 'var(--text-secondary)' }}
-            title="Close sidebar"
+            title={t('sidebar.close')}
           >
             <X size={18} />
           </button>
@@ -52,8 +54,8 @@ export default function Sidebar({ lessons, currentLessonId, onSelectLesson, prog
       {totalCount > 0 && (
         <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center justify-between text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
-            <span className="flex items-center gap-1"><BarChart3 size={12} /> Progress</span>
-            <span>{completedCount}/{totalCount} ({progressPct}%)</span>
+            <span className="flex items-center gap-1"><BarChart3 size={12} /> {t('sidebar.progress')}</span>
+            <span>{t('sidebar.completed')} {completedCount}/{totalCount} ({progressPct}%)</span>
           </div>
           <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
             <div
@@ -76,13 +78,13 @@ export default function Sidebar({ lessons, currentLessonId, onSelectLesson, prog
           }}
         >
           <Home size={16} />
-          Dashboard
+          {t('sidebar.dashboard')}
         </button>
       </nav>
 
       {lessons && lessons.length > 0 && (
         <div className="flex-1 overflow-y-auto p-3 pt-0">
-          <p className="text-xs uppercase tracking-wider mb-2 px-3" style={{ color: 'var(--text-secondary)' }}>Lessons</p>
+          <p className="text-xs uppercase tracking-wider mb-2 px-3" style={{ color: 'var(--text-secondary)' }}>{t('sidebar.lessons')}</p>
           {groupKeys.map((key) => {
             const group = groups[key]
             const isRoot = key === '__root__'

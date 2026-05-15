@@ -8,7 +8,13 @@ async function listCourses(req, res, next) {
       where.tags = { [require('sequelize').Op.like]: `%"${req.query.tag}"%` };
     }
 
-    const courses = await Course.findAll({
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 12));
+    const offset = (page - 1) * limit;
+
+    const total = await Course.count({ where });
+
+    const rows = await Course.findAll({
       where,
       attributes: {
         include: [
@@ -21,9 +27,12 @@ async function listCourses(req, res, next) {
         attributes: [],
       }],
       group: ['Course.id'],
+      limit,
+      offset,
+      subQuery: false,
     });
 
-    const result = courses.map(c => ({
+    const courses = rows.map(c => ({
       id: c.id,
       title: c.title,
       description: c.description,
@@ -33,7 +42,13 @@ async function listCourses(req, res, next) {
       lastSync: c.last_sync,
     }));
 
-    res.json(result);
+    res.json({
+      courses,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (error) {
     next(error);
   }
@@ -97,6 +112,7 @@ async function updateCourse(req, res, next) {
     if (tags !== undefined) course.tags = tags;
 
     await course.save();
+    invalidateCache('/api/courses');
     invalidateCache(`/api/courses/${course.id}`);
 
     res.json({
@@ -123,6 +139,7 @@ async function saveCourseSummary(req, res, next) {
 
     course.description = summary;
     await course.save();
+    invalidateCache('/api/courses');
     invalidateCache(`/api/courses/${course.id}`);
 
     res.json({ id: course.id, summary: course.description });

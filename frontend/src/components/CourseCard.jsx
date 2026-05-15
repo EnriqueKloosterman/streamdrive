@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { BookOpen } from 'lucide-react'
+import { useI18n } from '../contexts/I18nContext'
 
 const TAG_COLORS = [
   { bg: 'rgba(99,102,241,0.15)', text: '#818cf8' },
@@ -17,6 +18,7 @@ function tagStyle(tag) {
 
 export default function CourseCard({ course }) {
   const navigate = useNavigate()
+  const { t } = useI18n()
 
   return (
     <div
@@ -42,7 +44,7 @@ export default function CourseCard({ course }) {
         <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span className="flex items-center gap-1">
             <BookOpen size={14} />
-            {course.lessonCount} {course.lessonCount === 1 ? 'lesson' : 'lessons'}
+            {course.lessonCount} {course.lessonCount === 1 ? t('courseCard.lesson') : t('courseCard.lessons')}
           </span>
           {course.tags?.length > 0 && (
             <div className="flex gap-1 flex-wrap">

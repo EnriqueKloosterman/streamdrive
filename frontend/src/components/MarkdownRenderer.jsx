@@ -1,8 +1,10 @@
 import ReactMarkdown from 'react-markdown'
+import { useI18n } from '../contexts/I18nContext'
 
 export default function MarkdownRenderer({ content, className = '' }) {
+  const { t } = useI18n()
   if (!content) {
-    return <p className="italic" style={{ color: 'var(--text-secondary)' }}>No summary available.</p>
+    return <p className="italic" style={{ color: 'var(--text-secondary)' }}>{t('markdown.noSummary')}</p>
   }
 
   return (

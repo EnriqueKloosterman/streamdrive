@@ -1,7 +1,9 @@
 import { useRef, useState, useEffect } from 'react'
 import { BookmarkPlus, Trash2, Subtitles, ChevronDown, ChevronRight } from 'lucide-react'
+import { useI18n } from '../contexts/I18nContext'
 
 export default function Player({ lessonId, src, chapters = [], subtitles = [], onChaptersChange, initialTime = 0, onProgress, onComplete, thumbnailUrl, onThumbnailCaptured, qualities }) {
+  const { t } = useI18n()
   const [currentQuality, setCurrentQuality] = useState(qualities?.[0]?.label || 'Original')
   const pendingSeekRef = useRef(null)
   const qualitySrc = qualities ? `/api/lessons/${lessonId}/stream?quality=${currentQuality}` : src
@@ -40,7 +42,7 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
     }
     const onError = () => {
       setVideoLoading(false)
-      setVideoError('Failed to load video. Your session may have expired.')
+      setVideoError(t('player.error'))
     }
     el.addEventListener('loadedmetadata', onMeta)
     el.addEventListener('error', onError)
@@ -248,7 +250,7 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
           <div className="absolute inset-0 flex items-center justify-center z-10" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
             <div className="text-center">
               <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs text-gray-400">Loading video...</p>
+              <p className="text-xs text-gray-400">{t('player.loading')}</p>
             </div>
           </div>
         )}
@@ -266,7 +268,7 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
                 }}
                 className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs transition-colors"
               >
-                Retry
+                {t('player.retry')}
               </button>
             </div>
           </div>
@@ -287,13 +289,13 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
               label={sub.label}
             />
           ))}
-          <p>Your browser does not support the video element.</p>
+          <p>{t('player.fallback')}</p>
         </video>
       </div>
 
       {qualities && qualities.length > 1 && (
         <div className="flex items-center gap-2 mt-3">
-          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Quality:</span>
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{t('player.quality')}</span>
           <div className="relative inline-block">
             <select
               value={currentQuality}
@@ -323,14 +325,14 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
           >
             {transcriptOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             <Subtitles size={14} />
-            Transcript ({subtitles.map(s => s.label).join(', ')})
+            {t('player.transcript', { langs: subtitles.map(s => s.label).join(', ') })}
           </button>
           {transcriptOpen && (
             <div
               className="mt-2 p-3 rounded-lg text-sm max-h-60 overflow-y-auto whitespace-pre-wrap"
               style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
             >
-              {transcriptLoading ? 'Loading...' : transcriptText || 'No transcript available.'}
+              {transcriptLoading ? t('player.transcriptLoading') : transcriptText || t('player.noTranscript')}
             </div>
           )}
         </div>
@@ -339,13 +341,13 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
       <div className="mt-4">
         <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-              Chapters {chapters.length > 0 && `(${chapters.length})`}
+              {chapters.length > 0 ? t('player.chaptersCount', { count: chapters.length }) : t('player.chapters')}
             </h4>
           <button
             onClick={() => setEditing(!editing)}
             className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
           >
-            {editing ? 'Done' : 'Edit'}
+            {editing ? t('player.chaptersDone') : t('player.chaptersEdit')}
           </button>
         </div>
 
@@ -360,14 +362,14 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
                 el.currentTime = Math.max(0, el.currentTime - 2)
               }}
               className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-xs transition-colors"
-              title="Rewind 2s"
+              title={t('player.rewind')}
             >
-              -2s
+              {t('player.rewindLabel')}
             </button>
             <input
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
-              placeholder="Chapter title at current time..."
+              placeholder={t('player.chapterPlaceholder')}
               className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               onKeyDown={e => e.key === 'Enter' && addChapter()}
             />
@@ -377,7 +379,7 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
               className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 disabled:cursor-not-allowed text-white rounded-lg text-xs transition-colors"
             >
               <BookmarkPlus size={14} />
-              Add
+              {t('player.chapterAdd')}
             </button>
           </div>
         )}
@@ -421,7 +423,7 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
                   <button
                     onClick={() => deleteChapter(i)}
                     className="text-gray-500 hover:text-red-400 transition-colors shrink-0"
-                    title="Delete chapter"
+                    title={t('player.chapterDelete')}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -432,7 +434,7 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
         )}
 
         {!editing && chapters.length === 0 && (
-          <p className="text-xs italic" style={{ color: 'var(--text-secondary)' }}>Click Edit to add chapters</p>
+          <p className="text-xs italic" style={{ color: 'var(--text-secondary)' }}>{t('player.chaptersHint')}</p>
         )}
       </div>
     </div>

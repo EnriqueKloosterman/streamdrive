@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
 import api from '../lib/api'
+import { useI18n } from '../contexts/I18nContext'
 
 export default function SearchBar() {
+  const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState(null)
   const [open, setOpen] = useState(false)
@@ -97,7 +99,7 @@ export default function SearchBar() {
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Search courses..."
+          placeholder={t('search.placeholder')}
           className="w-full pl-9 pr-8 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           style={{
             backgroundColor: 'var(--card-bg)',
@@ -116,12 +118,12 @@ export default function SearchBar() {
         <div className="absolute top-full mt-2 w-full border rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto"
           style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border)' }}>
           {searching ? (
-            <p className="text-sm text-center py-4" style={{ color: 'var(--text-secondary)' }}>Searching...</p>
+            <p className="text-sm text-center py-4" style={{ color: 'var(--text-secondary)' }}>{t('search.searching')}</p>
           ) : results ? (
             <>
               {results.courses?.length > 0 && (
                 <div className="p-2">
-                  <p className="text-xs uppercase tracking-wider px-2 py-1" style={{ color: 'var(--text-secondary)' }}>Courses</p>
+                  <p className="text-xs uppercase tracking-wider px-2 py-1" style={{ color: 'var(--text-secondary)' }}>{t('search.courses')}</p>
                   {results.courses.map((c, i) => (
                     <button
                       key={c.id}
@@ -140,7 +142,7 @@ export default function SearchBar() {
               )}
               {results.lessons?.length > 0 && (
                 <div className="p-2 border-t" style={{ borderColor: 'var(--border)' }}>
-                  <p className="text-xs uppercase tracking-wider px-2 py-1" style={{ color: 'var(--text-secondary)' }}>Lessons</p>
+                  <p className="text-xs uppercase tracking-wider px-2 py-1" style={{ color: 'var(--text-secondary)' }}>{t('search.lessons')}</p>
                   {results.lessons.map((l, i) => {
                     const idx = (results.courses?.length || 0) + i
                     return (
@@ -161,7 +163,7 @@ export default function SearchBar() {
                 </div>
               )}
               {results.courses?.length === 0 && results.lessons?.length === 0 && (
-                <p className="text-sm text-center py-4" style={{ color: 'var(--text-secondary)' }}>No results</p>
+                <p className="text-sm text-center py-4" style={{ color: 'var(--text-secondary)' }}>{t('search.noResults')}</p>
               )}
             </>
           ) : null}

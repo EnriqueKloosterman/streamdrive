@@ -23,7 +23,8 @@ describe('Courses API', () => {
     it('returns empty array when no courses exist', async () => {
       const res = await get('/api/courses');
       expect(res.status).to.equal(200);
-      expect(res.body).to.be.an('array').that.is.empty;
+      expect(res.body.courses).to.be.an('array').that.is.empty;
+      expect(res.body).to.include({ total: 0, page: 1, limit: 12, totalPages: 0 });
     });
 
     it('returns all courses with correct fields', async () => {
@@ -37,9 +38,10 @@ describe('Courses API', () => {
 
       const res = await get('/api/courses');
       expect(res.status).to.equal(200);
-      expect(res.body).to.have.lengthOf(2);
+      expect(res.body.courses).to.have.lengthOf(2);
+      expect(res.body).to.include({ total: 2, page: 1, limit: 12, totalPages: 1 });
 
-      const titles = res.body.map(c => c.title).sort();
+      const titles = res.body.courses.map(c => c.title).sort();
       expect(titles).to.deep.equal(['Course A', 'Course B']);
     });
 
@@ -54,15 +56,49 @@ describe('Courses API', () => {
 
       const res = await get('/api/courses?tag=javascript');
       expect(res.status).to.equal(200);
-      expect(res.body).to.have.lengthOf(1);
-      expect(res.body[0].title).to.equal('JS Course');
+      expect(res.body.courses).to.have.lengthOf(1);
+      expect(res.body.courses[0].title).to.equal('JS Course');
     });
 
     it('returns empty array for non-matching tag', async () => {
       await createTestCourse({ title: 'Course', tags: ['javascript'] });
       const res = await get('/api/courses?tag=rust');
       expect(res.status).to.equal(200);
-      expect(res.body).to.be.an('array').that.is.empty;
+      expect(res.body.courses).to.be.an('array').that.is.empty;
+    });
+
+    it('respects page and limit params', async () => {
+      for (let i = 0; i < 5; i++) {
+        await createTestCourse({
+          id: `course-${i}`,
+          drive_folder_id: `folder-${i}`,
+          title: `Course ${i}`,
+          tags: [],
+        });
+      }
+
+      const page1 = await get('/api/courses?page=1&limit=2');
+      expect(page1.body.courses).to.have.lengthOf(2);
+      expect(page1.body).to.include({ total: 5, page: 1, limit: 2, totalPages: 3 });
+
+      const page3 = await get('/api/courses?page=3&limit=2');
+      expect(page3.body.courses).to.have.lengthOf(1);
+      expect(page3.body).to.include({ total: 5, page: 3, limit: 2, totalPages: 3 });
+    });
+
+    it('clamps page to minimum 1', async () => {
+      const res = await get('/api/courses?page=0&limit=2');
+      expect(res.body).to.include({ page: 1 });
+    });
+
+    it('clamps limit between 1 and 100', async () => {
+      const res1 = await get('/api/courses?limit=0');
+      expect(res1.status).to.equal(200);
+      expect(res1.body.limit).to.be.within(1, 100);
+
+      const res2 = await get('/api/courses?limit=999');
+      expect(res2.status).to.equal(200);
+      expect(res2.body.limit).to.equal(100);
     });
   });
 

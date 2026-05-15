@@ -4,9 +4,10 @@ import { useFetch } from '../hooks/useFetch'
 import Sidebar from '../components/Sidebar'
 import Player from '../components/Player'
 import MarkdownRenderer from '../components/MarkdownRenderer'
-import { ChevronLeft, FileText, Video, FileDown, Sun, Moon, Edit3, Menu, X as CloseIcon, BarChart3 } from 'lucide-react'
+import { ChevronLeft, FileText, Video, FileDown, Sun, Moon, Edit3, Menu, X as CloseIcon, BarChart3, Languages } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
+import { useI18n } from '../contexts/I18nContext'
 import { useToast } from '../contexts/ToastContext'
 import api from '../lib/api'
 
@@ -21,6 +22,7 @@ export default function CourseDetail() {
   const [progress, setProgress] = useState({})
   const summaryRef = useRef(null)
   const { theme, toggle: toggleTheme } = useTheme()
+  const { t, language, toggleLanguage } = useI18n()
   const toast = useToast()
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024)
 
@@ -37,8 +39,8 @@ export default function CourseDetail() {
   }, [course?.id])
 
   useEffect(() => {
-    if (selectedLesson) document.title = `${selectedLesson.title} - ${course?.title || 'Course'} - StreamDrive Hub`
-    else if (course) document.title = `${course.title} - StreamDrive Hub`
+    if (selectedLesson) document.title = t('courseDetail.title', { lesson: selectedLesson.title, course: course?.title || 'Course' })
+    else if (course) document.title = t('courseDetail.titleNoLesson', { course: course.title })
   }, [course, selectedLesson])
 
   const handleProgress = useCallback((currentTime) => {
@@ -65,7 +67,7 @@ export default function CourseDetail() {
         await api.post('/api/progress', { lessonId: selectedLesson.id, currentTime: 0, completed: false })
       }
     } catch (e) {
-      toast.error('Failed to update completion status')
+      toast.error(t('courseDetail.completionFailed'))
       console.error('Failed to toggle completion:', e)
     }
   }, [selectedLesson, progress])
@@ -98,9 +100,9 @@ export default function CourseDetail() {
         )
       )
       setEditingSummary(false)
-      toast.success('Summary saved')
+      toast.success(t('courseDetail.summarySaved'))
     } catch (err) {
-      toast.error('Failed to save summary')
+      toast.error(t('courseDetail.summarySaveFailed'))
       console.error('Failed to save summary:', err)
     }
   }
@@ -139,7 +141,7 @@ export default function CourseDetail() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--page-bg)' }}>
-        <p style={{ color: 'var(--text-secondary)' }}>Loading course...</p>
+        <p style={{ color: 'var(--text-secondary)' }}>{t('courseDetail.loading')}</p>
       </div>
     )
   }
@@ -147,7 +149,7 @@ export default function CourseDetail() {
   if (error || !course) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--page-bg)' }}>
-        <p className="text-red-400">{error?.message || 'Course not found'}</p>
+        <p className="text-red-400">{error?.message || t('courseDetail.notFound')}</p>
       </div>
     )
   }
@@ -162,7 +164,7 @@ export default function CourseDetail() {
     try {
       await api.put(`/api/lessons/${selectedLesson.id}`, { chapters })
     } catch (err) {
-      toast.error('Failed to save chapters')
+      toast.error(t('courseDetail.chaptersSaveFailed'))
       console.error('Failed to save chapters:', err)
     }
   }
@@ -195,7 +197,7 @@ export default function CourseDetail() {
               backgroundColor: 'var(--card-bg)',
               border: '1px solid var(--border)',
             }}
-            title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+            title={sidebarOpen ? t('courseDetail.closeSidebar') : t('courseDetail.openSidebar')}
           >
             {sidebarOpen ? <CloseIcon size={18} /> : <Menu size={18} />}
           </button>
@@ -210,9 +212,18 @@ export default function CourseDetail() {
             onClick={toggleTheme}
             className="p-1.5 rounded-lg transition-colors"
             style={{ color: 'var(--text-secondary)' }}
-            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+            title={t('theme.switch', { theme: theme === 'dark' ? t('theme.light') : t('theme.dark') })}
           >
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <button
+            onClick={toggleLanguage}
+            className="p-1.5 rounded-lg transition-colors flex items-center gap-1"
+            style={{ color: 'var(--text-secondary)' }}
+            title={language === 'en' ? t('language.switch') : t('language.switchEs')}
+          >
+            <Languages size={14} />
+            <span className="text-xs font-medium uppercase">{language}</span>
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{course?.title}</h1>
@@ -257,7 +268,7 @@ export default function CourseDetail() {
                       border: `1px solid ${progress[selectedLesson.id]?.completed ? 'rgba(34,197,94,0.3)' : 'var(--border)'}`,
                     }}
                   >
-                    {progress[selectedLesson.id]?.completed ? 'Completed' : 'Mark complete'}
+                    {progress[selectedLesson.id]?.completed ? t('courseDetail.completed') : t('courseDetail.markComplete')}
                   </button>
                 </div>
 
@@ -282,7 +293,7 @@ export default function CourseDetail() {
                 <div className="mt-4 max-w-4xl">
                   <div className="flex items-center gap-2 mb-4">
                     <FileText size={16} className="text-indigo-400" />
-                    <h3 className="text-sm font-medium text-gray-300 uppercase tracking-wider">Technical Summary</h3>
+                    <h3 className="text-sm font-medium text-gray-300 uppercase tracking-wider">{t('courseDetail.technicalSummary')}</h3>
                     <button
                       onClick={() => {
                         setSummaryText(selectedLesson.summary || '')
@@ -290,19 +301,19 @@ export default function CourseDetail() {
                       }}
                       className="flex items-center gap-1 px-2.5 py-1 rounded text-xs transition-colors"
                       style={{ color: 'var(--text-secondary)' }}
-                      title="Edit summary"
+                      title={t('courseDetail.editSummary')}
                     >
                       <Edit3 size={14} />
-                      Edit
+                      {t('courseDetail.edit')}
                     </button>
                     <button
                       onClick={handleExportPdf}
                       className="flex items-center gap-1 px-2.5 py-1 rounded text-xs transition-colors"
                       style={{ color: 'var(--text-secondary)' }}
-                      title="Print / Save as PDF"
+                      title={t('courseDetail.printPdf')}
                     >
                       <FileDown size={14} />
-                      PDF
+                      {t('courseDetail.pdf')}
                     </button>
                   </div>
 
@@ -320,13 +331,13 @@ export default function CourseDetail() {
                           onClick={handleSaveSummary}
                           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm transition-colors"
                         >
-                          Save
+                          {t('courseDetail.save')}
                         </button>
                         <button
                           onClick={() => setEditingSummary(false)}
                           className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm transition-colors"
                         >
-                          Cancel
+                          {t('courseDetail.cancel')}
                         </button>
                       </div>
                     </div>

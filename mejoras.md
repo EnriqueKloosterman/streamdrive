@@ -41,11 +41,11 @@
 - [ ] Panel de administración (gestión de cursos/usuarios desde UI)
 - [ ] Rol de usuario (admin, instructor, student)
 - [ ] Reordenar lecciones con drag & drop
-- [ ] Paginación en cursos con muchas lecciones
+- [x] Paginación en cursos con muchas lecciones
 - [ ] Landing page pública (antes del login)
 - [ ] Modo demo / guest sin autenticación
 - [x] Tema claro/oscuro con animación suave (transición 0.2s)
-- [ ] Internacionalización (i18n) multi-idioma
+- [x] Internacionalización (i18n) multi-idioma
 - [ ] Accesibilidad (WCAG 2.2 audit)
 - [x] Page titles dinámicos por ruta
 - [ ] Sitemap, structured data, meta tags completos
