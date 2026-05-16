@@ -1,4 +1,5 @@
 const { getDriveClient } = require('../config/googleClient');
+const { sequelize } = require('../config/db');
 const { Course, Lesson } = require('../models');
 
 async function syncFromDrive() {
@@ -41,10 +42,20 @@ async function syncFromDrive() {
   }
 
   const syncedIds = courseFolders.map(f => f.id);
-  const removed = await Course.destroy({
-    where: { drive_folder_id: { [require('sequelize').Op.notIn]: syncedIds } },
-  });
-  if (removed > 0) console.log(`[Sync] Removed ${removed} orphaned courses`);
+  if (syncedIds.length > 0) {
+    await sequelize.query('PRAGMA foreign_keys = OFF');
+    const orphanedCourses = await Course.findAll({
+      where: { drive_folder_id: { [require('sequelize').Op.notIn]: syncedIds } },
+      attributes: ['id'],
+    });
+    const orphanedIds = orphanedCourses.map(c => c.id);
+    if (orphanedIds.length > 0) {
+      await Lesson.destroy({ where: { course_id: orphanedIds } });
+      await Course.destroy({ where: { id: orphanedIds } });
+      console.log(`[Sync] Removed ${orphanedIds.length} orphaned courses with lessons`);
+    }
+    await sequelize.query('PRAGMA foreign_keys = ON');
+  }
 
   return { totalCourses: courseFolders.length, updatedCourseIds, errors: errors.length > 0 ? errors : undefined };
 }
