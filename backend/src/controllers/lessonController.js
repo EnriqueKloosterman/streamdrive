@@ -1,6 +1,77 @@
 const { Lesson } = require('../models');
 const { invalidateCache } = require('../middleware/cache');
 const { getDriveClient } = require('../config/googleClient');
+const NodeCache = require('node-cache');
+
+const videoMetaCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
+const MAX_VIDEO_CHUNK_SIZE = 10 * 1024 * 1024;
+
+async function getVideoMeta(drive, fileId) {
+  const cached = videoMetaCache.get(fileId);
+  if (cached) return cached;
+
+  const meta = await drive.files.get({
+    fileId,
+    fields: 'id, name, mimeType, size',
+  });
+
+  const data = {
+    fileSize: parseInt(meta.data.size, 10),
+    mimeType: meta.data.mimeType || 'video/mp4',
+  };
+
+  videoMetaCache.set(fileId, data);
+  return data;
+}
+
+function parseRangeHeader(rangeHeader, fileSize) {
+  if (!rangeHeader || !Number.isFinite(fileSize) || fileSize <= 0) return null;
+
+  const match = rangeHeader.match(/^bytes=(\d*)-(\d*)$/);
+  if (!match) return null;
+
+  const [, startRaw, endRaw] = match;
+  if (!startRaw && !endRaw) return null;
+
+  let start;
+  let end;
+
+  if (!startRaw) {
+    const suffixLength = parseInt(endRaw, 10);
+    if (!Number.isFinite(suffixLength) || suffixLength <= 0) return null;
+    start = Math.max(fileSize - suffixLength, 0);
+    end = fileSize - 1;
+  } else {
+    start = parseInt(startRaw, 10);
+    end = endRaw ? parseInt(endRaw, 10) : fileSize - 1;
+  }
+
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  if (start >= fileSize || start > end) return null;
+
+  end = Math.min(end, fileSize - 1, start + MAX_VIDEO_CHUNK_SIZE - 1);
+
+  return { start, end, chunkSize: end - start + 1 };
+}
+
+function pipeDriveStream(driveStream, res, next) {
+  const upstream = driveStream.data;
+
+  upstream.on('error', (error) => {
+    console.error('[Drive Stream Error]', error.message);
+    if (res.headersSent) {
+      res.destroy(error);
+    } else {
+      next(error);
+    }
+  });
+
+  res.on('close', () => {
+    if (!res.writableEnded && upstream.destroy) upstream.destroy();
+  });
+
+  upstream.pipe(res);
+}
 
 async function getLesson(req, res, next) {
   try {
@@ -83,35 +154,32 @@ async function streamVideo(req, res, next) {
 
     const drive = getDriveClient();
 
-    const meta = await drive.files.get({
-      fileId,
-      fields: 'id, name, mimeType, size',
-    });
-
-    const fileSize = parseInt(meta.data.size, 10);
-    const mimeType = meta.data.mimeType || 'video/mp4';
+    const { fileSize, mimeType } = await getVideoMeta(drive, fileId);
+    if (!Number.isFinite(fileSize) || fileSize <= 0) {
+      return res.status(502).json({
+        error: { code: 'GOOGLE_API_ERROR', message: 'Video size is unavailable from Drive.' },
+      });
+    }
 
     const range = req.headers.range;
     if (!range) {
+      const driveStream = await drive.files.get(
+        { fileId, alt: 'media' },
+        { responseType: 'stream' }
+      );
+
       res.writeHead(200, {
         'Content-Type': mimeType,
         'Content-Length': fileSize,
         'Accept-Ranges': 'bytes',
       });
 
-      const driveStream = await drive.files.get(
-        { fileId, alt: 'media' },
-        { responseType: 'stream' }
-      );
-      driveStream.data.pipe(res);
+      pipeDriveStream(driveStream, res, next);
       return;
     }
 
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-
-    if (start >= fileSize) {
+    const parsedRange = parseRangeHeader(range, fileSize);
+    if (!parsedRange) {
       res.writeHead(416, {
         'Content-Range': `bytes */${fileSize}`,
       });
@@ -119,7 +187,15 @@ async function streamVideo(req, res, next) {
       return;
     }
 
-    const chunkSize = end - start + 1;
+    const { start, end, chunkSize } = parsedRange;
+    const driveStream = await drive.files.get(
+      { fileId, alt: 'media' },
+      {
+        responseType: 'stream',
+        headers: { Range: `bytes=${start}-${end}` },
+      }
+    );
+
     res.writeHead(206, {
       'Content-Range': `bytes ${start}-${end}/${fileSize}`,
       'Accept-Ranges': 'bytes',
@@ -127,37 +203,7 @@ async function streamVideo(req, res, next) {
       'Content-Type': mimeType,
     });
 
-    const driveStream = await drive.files.get(
-      { fileId, alt: 'media' },
-      { responseType: 'stream' }
-    );
-
-    let bytesRead = 0;
-    driveStream.data.on('data', (chunk) => {
-      if (bytesRead + chunk.length <= start) {
-        bytesRead += chunk.length;
-        return;
-      }
-
-      const chunkStart = Math.max(0, start - bytesRead);
-      const chunkEnd = Math.min(chunk.length, end - bytesRead + 1);
-      const sliced = chunk.slice(chunkStart, chunkEnd);
-
-      if (sliced.length > 0) {
-        res.write(sliced);
-      }
-
-      bytesRead += chunk.length;
-
-      if (bytesRead > end) {
-        driveStream.data.destroy();
-        res.end();
-      }
-    });
-
-    driveStream.data.on('end', () => {
-      if (!res.writableEnded) res.end();
-    });
+    pipeDriveStream(driveStream, res, next);
   } catch (error) {
     if (error.code === 404) {
       return res.status(404).json({
@@ -268,4 +314,14 @@ async function saveThumbnail(req, res, next) {
   }
 }
 
-module.exports = { getLesson, updateLesson, streamVideo, getSubtitle, saveThumbnail };
+module.exports = {
+  getLesson,
+  updateLesson,
+  streamVideo,
+  getSubtitle,
+  saveThumbnail,
+  __private: {
+    parseRangeHeader,
+    MAX_VIDEO_CHUNK_SIZE,
+  },
+};

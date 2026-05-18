@@ -9,6 +9,7 @@ const {
   put,
   post,
 } = require('../setup');
+const { __private } = require('../../src/controllers/lessonController');
 
 describe('Lessons API', () => {
   before(async () => {
@@ -36,6 +37,28 @@ describe('Lessons API', () => {
     it('returns 404 for unknown lesson', async () => {
       const res = await get('/api/lessons/non-existent');
       expect(res.status).to.equal(404);
+    });
+  });
+
+  describe('stream range parsing', () => {
+    it('parses open ended ranges with the configured chunk limit', () => {
+      const range = __private.parseRangeHeader('bytes=5-', __private.MAX_VIDEO_CHUNK_SIZE + 20);
+      expect(range).to.deep.equal({
+        start: 5,
+        end: __private.MAX_VIDEO_CHUNK_SIZE + 4,
+        chunkSize: __private.MAX_VIDEO_CHUNK_SIZE,
+      });
+    });
+
+    it('parses suffix ranges', () => {
+      const range = __private.parseRangeHeader('bytes=-500', 1000);
+      expect(range).to.deep.equal({ start: 500, end: 999, chunkSize: 500 });
+    });
+
+    it('rejects malformed and out of bounds ranges', () => {
+      expect(__private.parseRangeHeader('bytes=abc-def', 1000)).to.equal(null);
+      expect(__private.parseRangeHeader('bytes=1000-1001', 1000)).to.equal(null);
+      expect(__private.parseRangeHeader('bytes=900-100', 1000)).to.equal(null);
     });
   });
 

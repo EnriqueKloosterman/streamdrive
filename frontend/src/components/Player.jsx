@@ -29,14 +29,17 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
     setVideoError(null)
     el.src = qualitySrc
     el.load()
-    lastSaveRef.current = Date.now()
+    lastSaveRef.current = 0
     setCurrentTime(0)
 
     const onMeta = () => {
       isLoadedRef.current = true
       setVideoLoading(false)
       const seekTime = pendingSeekRef.current !== null ? pendingSeekRef.current : initialTime
-      if (seekTime > 0) el.currentTime = seekTime
+      if (seekTime > 0) {
+        el.currentTime = seekTime
+        lastSaveRef.current = Math.floor(seekTime)
+      }
       pendingSeekRef.current = null
       el.removeEventListener('loadedmetadata', onMeta)
     }
@@ -66,30 +69,36 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
       setCurrentTime(t)
       if (onProgress && t - lastSaveRef.current >= 15) {
         onProgress(Math.floor(t))
-        lastSaveRef.current = t
+        lastSaveRef.current = Math.floor(t)
       }
       if (!thumbnailCapturedRef.current && !thumbnailUrl && t >= 5 && canvasRef.current) {
         thumbnailCapturedRef.current = true
-        const canvas = canvasRef.current
-        const ctx = canvas.getContext('2d')
-        canvas.width = 320
-        canvas.height = 180
-        ctx.drawImage(el, 0, 0, 320, 180)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
-        fetch(`/api/lessons/${lessonId}/thumbnail`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dataUrl }),
-        }).then(res => {
-          if (res.ok && onThumbnailCaptured) onThumbnailCaptured()
-        }).catch(() => { thumbnailCapturedRef.current = false })
+        try {
+          const canvas = canvasRef.current
+          const ctx = canvas.getContext('2d')
+          canvas.width = 320
+          canvas.height = 180
+          ctx.drawImage(el, 0, 0, 320, 180)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
+          fetch(`/api/lessons/${lessonId}/thumbnail`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ dataUrl }),
+          }).then(res => {
+            if (res.ok && onThumbnailCaptured) onThumbnailCaptured()
+          }).catch(() => { thumbnailCapturedRef.current = false })
+        } catch {
+          thumbnailCapturedRef.current = false
+        }
       }
     }
     el.addEventListener('timeupdate', handler)
 
-    const pauseHandler = () => {
+    const saveCurrentProgress = () => {
       if (onProgress) onProgress(Math.floor(el.currentTime))
     }
+    const pauseHandler = saveCurrentProgress
     el.addEventListener('pause', pauseHandler)
 
     const endedHandler = () => {
@@ -97,10 +106,18 @@ export default function Player({ lessonId, src, chapters = [], subtitles = [], o
     }
     el.addEventListener('ended', endedHandler)
 
+    const visibilityHandler = () => {
+      if (document.visibilityState === 'hidden') saveCurrentProgress()
+    }
+    document.addEventListener('visibilitychange', visibilityHandler)
+    window.addEventListener('pagehide', saveCurrentProgress)
+
     return () => {
       el.removeEventListener('timeupdate', handler)
       el.removeEventListener('pause', pauseHandler)
       el.removeEventListener('ended', endedHandler)
+      document.removeEventListener('visibilitychange', visibilityHandler)
+      window.removeEventListener('pagehide', saveCurrentProgress)
       const t = Math.floor(el.currentTime)
       if (onProgress && t > 0) onProgress(t)
     }

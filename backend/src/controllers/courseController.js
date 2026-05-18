@@ -60,8 +60,8 @@ async function getCourse(req, res, next) {
       include: [{
         model: Lesson,
         as: 'lessons',
-        order: [['order', 'ASC']],
       }],
+      order: [[{ model: Lesson, as: 'lessons' }, 'order', 'ASC']],
     });
 
     if (!course) {

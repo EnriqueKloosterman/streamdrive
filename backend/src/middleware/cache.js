@@ -11,7 +11,9 @@ function cacheMiddleware(duration) {
     }
     res.sendResponse = res.json;
     res.json = (body) => {
-      cache.set(key, body, duration);
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        cache.set(key, body, duration);
+      }
       res.sendResponse(body);
     };
     next();

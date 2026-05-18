@@ -1,6 +1,7 @@
 const { getDriveClient } = require('../config/googleClient');
 const { sequelize } = require('../config/db');
 const { Course, Lesson } = require('../models');
+const { Op } = require('sequelize');
 
 async function syncFromDrive() {
   const drive = getDriveClient();
@@ -45,7 +46,7 @@ async function syncFromDrive() {
   if (syncedIds.length > 0) {
     await sequelize.query('PRAGMA foreign_keys = OFF');
     const orphanedCourses = await Course.findAll({
-      where: { drive_folder_id: { [require('sequelize').Op.notIn]: syncedIds } },
+      where: { drive_folder_id: { [Op.notIn]: syncedIds } },
       attributes: ['id'],
     });
     const orphanedIds = orphanedCourses.map(c => c.id);
@@ -113,12 +114,14 @@ async function syncCourse(drive, folder) {
   }
 
   let order = 0;
+  const syncedLessonDriveIds = [];
   for (const baseName of Object.keys(groups).sort()) {
     const group = groups[baseName];
     const video = group.main || group.qualities[0];
 
     if (!video) continue;
     order++;
+    syncedLessonDriveIds.push(video.id);
 
     const mdFile = files.find(f =>
       f.name === `${baseName}.md` || f.name === `${baseName}.markdown`
@@ -174,6 +177,18 @@ async function syncCourse(drive, folder) {
       subtitles: uniqueSubs.length > 0 ? JSON.stringify(uniqueSubs) : null,
       qualities: qualitiesJson,
     });
+  }
+
+  const obsoleteWhere = syncedLessonDriveIds.length > 0
+    ? {
+        course_id: course.id,
+        drive_file_id: { [Op.notIn]: syncedLessonDriveIds },
+      }
+    : { course_id: course.id };
+
+  const removedLessons = await Lesson.destroy({ where: obsoleteWhere });
+  if (removedLessons > 0) {
+    console.log(`[Sync] Removed ${removedLessons} obsolete lessons from ${course.title}`);
   }
 
   return course;
@@ -285,4 +300,10 @@ async function getStreamData(fileId) {
   };
 }
 
-module.exports = { syncFromDrive, getStreamData };
+module.exports = {
+  syncFromDrive,
+  getStreamData,
+  __private: {
+    syncCourse,
+  },
+};

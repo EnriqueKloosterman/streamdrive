@@ -34,7 +34,7 @@ async function setupApp() {
   if (!app) {
     const mod = require('../src/app');
     app = mod.app;
-    await mod.startServer();
+    await mod.initDatabase();
     await User.upsert({ ...testUser });
   }
 }

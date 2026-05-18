@@ -126,6 +126,22 @@ describe('Courses API', () => {
       expect(res.body.error).to.exist;
     });
 
+    it('does not cache 404 responses', async () => {
+      const missing = await get('/api/courses/course-created-later');
+      expect(missing.status).to.equal(404);
+
+      await createTestCourse({
+        id: 'course-created-later',
+        drive_folder_id: 'folder-created-later',
+        title: 'Created Later',
+        tags: [],
+      });
+
+      const found = await get('/api/courses/course-created-later');
+      expect(found.status).to.equal(200);
+      expect(found.body.title).to.equal('Created Later');
+    });
+
     it('includes lesson summary and subtitle info', async () => {
       await createTestCourse();
       await createTestLesson({
